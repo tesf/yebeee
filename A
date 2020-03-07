@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:s3="http://www.mulesoft.org/schema/mule/s3"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:sftp="http://www.mulesoft.org/schema/mule/sftp" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/sftp http://www.mulesoft.org/schema/mule/sftp/current/mule-sftp.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/s3 http://www.mulesoft.org/schema/mule/s3/current/mule-s3.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd">
+	<sftp:config name="SFTP_Config" doc:name="SFTP Config" doc:id="4fe01d22-64d5-446e-89ea-7f80b08c284c" >
+		<sftp:connection host="sftp.cpcc.edu" username="talemu00" password="bukusha12" />
+	</sftp:config>
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="9f062ea5-b224-4d9f-9974-87a8aa3e7834" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<flow name="OnDemandFlow" doc:id="113aeb66-ba04-4d8b-b36b-1accb6807614" >
+		<http:listener doc:name="Listener" doc:id="8500a203-a797-4d48-9484-773a00413fa4" config-ref="HTTP_Listener_config" path="/readFile"/>
+		<sftp:read doc:name="Read" doc:id="c2c35093-bd00-4148-aa2f-098089a61bd4" config-ref="SFTP_Config" path="/home/talemu00/public_html/web215/toc/dynamic_toc/scripts/dynamize.js"/>
+		<ee:transform doc:name="Transform Message" doc:id="1946e5d9-210f-4f7c-8fd5-9788b4e85c3f" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+{
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="ea9072c5-629d-444c-9e98-2fecf138dfa2" message="#[payload]" />
+		<s3:create-object doc:name="Create object" doc:id="4f077e7a-83c5-4a1f-a484-75836689abea" />
+		<logger level="INFO" doc:name="Logger" doc:id="b6a41386-46b8-4f7b-988a-8763cb9d88bc" message='#[payload ++ "Successfuly writen to the file"]'/>
+	</flow>
+	<flow name="ScheduledFlow" doc:id="93b449a3-a13e-40f2-a047-6e4555edee2e" >
+		<sftp:read doc:name="Read" doc:id="cde05492-e807-4f5a-8ff1-d88c8a0ed0f5" config-ref="SFTP_Config"/>
+		<logger level="INFO" doc:name="Logger" doc:id="4d6f9b3e-226f-45b4-8a3c-a39c0ed40410" />
+		<ee:transform doc:name="Transform Message" doc:id="5f9ca594-fce7-45ef-97ce-3b72e1294fa6" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+{
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<s3:create-object doc:name="input bucket" doc:id="b56586ea-261e-4bb0-bd8d-64663252bbc6" />
+		<ee:transform doc:name="Transform Message" doc:id="4b85a359-0abd-4415-ac60-5e3d3488c84a" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+{
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<db:insert doc:name="Raw-Schema" doc:id="5cae6c44-4ba4-4451-a6c3-a07793645e3c" />
+		<ee:transform doc:name="Transform Message" doc:id="9bd8114c-f7e8-446a-bd42-6ae7087348bf" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+{
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<db:insert doc:name="Stage-Schema" doc:id="a99546ff-afec-49d1-a818-99dc92432f9c" />
+		<ee:transform doc:name="Transform Message" doc:id="11d7cadd-9eae-42b6-a8ff-08b9ce43f97e" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+{
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<db:insert doc:name="Final-Schema" doc:id="be70a5c1-a8d3-4139-9f74-5bb829f82843" />
+		<s3:create-object doc:name="output-bucket" doc:id="28604699-ea8f-44a3-97ce-f1fcca8c6916" />
+	</flow>
+</mule>
